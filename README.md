@@ -1,39 +1,31 @@
 # NAIC2021
 
-#### 介绍
-{**以下是 Gitee 平台说明，您可以替换此简介**
-Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN）。专为开发者提供稳定、高效、安全的云端软件开发协作平台
-无论是个人、团队、或是企业，都能够用 Gitee 实现代码托管、项目管理、协作开发。企业项目请看 [https://gitee.com/enterprises](https://gitee.com/enterprises)}
+### 介绍
+NAIC2021比赛，AI+无线通信赛道
 
-#### 软件架构
-软件架构说明
+### 软件架构
+#### Model_define_tf.py
+为定义模型的代码，如encoder、decoder、量化层等，提交时就提交这个和训练好的模型权重
+#### Model_train.py
+为训练模型的代码
+#### Modelsave
+文件夹内为历次训练的模型权重、自动生成的模型结构图、CSI图像输入输出的效果图。
+按照时间及得分划分子文件夹，格式为modelpath = f'./Modelsave/{current_time}S{score_str}/'
+TODO:也可以将本次训练使用的Model_define_tf.py一并放入（通过代码自动完成）
+#### logs
+文件夹内为tensorboard保存的记录文件，可以通过tensorboard --logdir logs启用可视化网页查看
+#### train
+文件夹内为数据集，8000个训练集样本和2000个测试集样本，样本形状为(None,126,128,2)
+### 环境要求
+1.  python==3.9.7
+2.  tensorflow-gpu==2.6.0
+3.  keras==2.6.0
+4.  numpy==1.21.2
+5.  cuda>=11.3.1
+6.  cudnn>=8.2.1
 
-
-#### 安装教程
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### 使用说明
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### 参与贡献
-
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
-
-
-#### 特技
-
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+### 使用说明
+1.  先按照要求搭建运行环境，未提及的模块在运行时若报错请自己查询添加
+2.  在Model_define_tf.py内部定义模型结构
+3.  运行Model_train.py开始训练，训练完后会自动保存训练权重、模型结构图、CSI图像效果图到相应文件夹内
+4.  提交时请提交Model_define_tf.py及两个训练好的encoder.h5、decoder.h5权重
