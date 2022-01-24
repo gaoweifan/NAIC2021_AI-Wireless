@@ -6,6 +6,8 @@ bin-release/
 
 # Other files and folders
 .settings/
+train/
+*.h5
 
 # Executables
 *.swf
