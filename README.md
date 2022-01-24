@@ -11,7 +11,7 @@ NAIC2021比赛，AI+无线通信赛道
 #### Modelsave
 文件夹内为历次训练的模型权重、自动生成的模型结构图、CSI图像输入输出的效果图。
 按照时间及得分划分子文件夹，格式为modelpath = f'./Modelsave/{current_time}S{score_str}/'
-TODO:也可以将本次训练使用的Model_define_tf.py一并放入（通过代码自动完成）
+并能将本次训练使用的Model_define_tf.py一并放入（通过代码自动完成）
 #### logs
 文件夹内为tensorboard保存的记录文件，可以通过tensorboard --logdir logs启用可视化网页查看
 #### train

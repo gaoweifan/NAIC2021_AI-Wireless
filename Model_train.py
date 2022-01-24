@@ -8,6 +8,7 @@ import keras.backend as K
 from keras.callbacks import LearningRateScheduler
 from Model_define_tf import Encoder, Decoder, NMSE
 from datetime import datetime
+import shutil
 # tf.compat.v1.disable_eager_execution()
 # gpus = tf.config.experimental.list_physical_devices('GPU')
 # if gpus:
@@ -176,7 +177,8 @@ plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=True)
 # save decoder
 decoder.save(modelpath+"decoder.h5")
 plot_model(decoder,to_file=modelpath+"decoder.png",show_shapes=True)
-
+# save code
+shutil.copyfile('./Model_define_tf.py', modelpath+'Model_define_tf.py')
 
 # 以下是可视化作图部分
 import matplotlib.pyplot as plt
