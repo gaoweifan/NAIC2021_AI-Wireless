@@ -80,9 +80,9 @@ data_load_address = 'train'
 mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
-# x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
+x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
 # x_train=np.concatenate((x_train,x_train_noise))
-# x_train=x_train_noise
+x_train=x_train_noise
 # x_train=linearMapping(x_train)#非线性（分段线性）映射
 np.random.shuffle(x_train)  # 洗牌
 print("x_train",x_train.shape)
@@ -118,14 +118,14 @@ def score_train(y_true, y_pred):
 Encoder_input = keras.Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits)
 encoder = keras.Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-# encoder.load_weights('Modelsave/20220121-173329S52.835/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220114-235043S49.779/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = keras.Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
 decoder = keras.Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-# decoder.load_weights('Modelsave/20220121-173329S52.835/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220114-235043S49.779/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -158,7 +158,7 @@ tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir_fit,histogram_
 # lr_callback = LearningRateScheduler(lr_sche)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=16, epochs=200, validation_split=0.2,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=16, epochs=3, validation_split=0.2,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
@@ -173,10 +173,16 @@ print('The mean NMSE for test set is ' + str(NMSE_test),"score:",score_str)
 # save encoder
 modelpath = f'./Modelsave/{current_time}S{score_str}/'
 encoder.save(modelpath+"encoder.h5")
-plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=True)
+try:
+    plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=True)
+except:
+    plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=False)
 # save decoder
 decoder.save(modelpath+"decoder.h5")
-plot_model(decoder,to_file=modelpath+"decoder.png",show_shapes=True)
+try:
+    plot_model(encoder,to_file=modelpath+"decoder.png",show_shapes=True)
+except:
+    plot_model(encoder,to_file=modelpath+"decoder.png",show_shapes=False)
 # save code
 shutil.copyfile('./Model_define_tf.py', modelpath+'Model_define_tf.py')
 
@@ -201,5 +207,5 @@ for i in range(n):
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     ax.invert_yaxis()
-plt.savefig(f'./Modelsave/{current_time}S{score_str}/plot.png')
+plt.savefig(f'./Modelsave/{current_time}S{score_str}/csiPlot.png')
 # plt.show()

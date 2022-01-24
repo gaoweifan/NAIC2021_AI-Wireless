@@ -6,8 +6,9 @@ bin-release/
 
 # Other files and folders
 .settings/
-train/
+*.mat
 *.h5
+__pycache__/
 
 # Executables
 *.swf
