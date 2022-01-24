@@ -118,14 +118,14 @@ def score_train(y_true, y_pred):
 Encoder_input = keras.Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits)
 encoder = keras.Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220114-235043S49.779/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220121-173329S52.835/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = keras.Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
 decoder = keras.Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220114-235043S49.779/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220121-173329S52.835/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
