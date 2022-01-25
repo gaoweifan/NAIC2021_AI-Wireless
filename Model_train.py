@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.io as scio
 import tensorflow as tf
-from tensorflow import keras
+from tensorflow.keras import optimizers,callbacks,Input,Model
 from tensorflow.keras.utils import plot_model
 from tensorflow import summary
 import keras.backend as K
-from keras.callbacks import LearningRateScheduler
+from keras.callbacks import LearningRateScheduler,ReduceLROnPlateau
 from Model_define_tf import Encoder, Decoder, NMSE
 from datetime import datetime
 import shutil
@@ -80,9 +80,9 @@ data_load_address = 'train'
 mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
-x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
+# x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
 # x_train=np.concatenate((x_train,x_train_noise))
-x_train=x_train_noise
+# x_train=x_train_noise
 # x_train=linearMapping(x_train)#非线性（分段线性）映射
 np.random.shuffle(x_train)  # 洗牌
 print("x_train",x_train.shape)
@@ -115,50 +115,55 @@ def score_train(y_true, y_pred):
 
 # 建立模型
 # encoder model
-Encoder_input = keras.Input(shape=(img_height, img_width, img_channels), name="encoder_input")
+Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits)
-encoder = keras.Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220121-173329S52.835/encoder.h5')  # 预加载编码器权重
+encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
+# encoder.load_weights('Modelsave/20220125-142527S-9.856/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
-Decoder_input = keras.Input(shape=(feedback_bits,), name='decoder_input')
+Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
-decoder = keras.Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220121-173329S52.835/decoder.h5')  # 预加载解码器权重
+decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
+# decoder.load_weights('Modelsave/20220125-142527S-9.856/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
-autoencoder_input = keras.Input(shape=(img_height, img_width, img_channels), name="original_img")
+autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="original_img")
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
-autoencoder = keras.Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-autoencoder.compile(optimizer='adam', loss='mse', metrics=["acc", score_train])  # 编译模型
+autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
+adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
+autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
 # TensorBoard回调函数
 current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
 logdir_fit = "logs/" + current_time + "/fit"
-tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1)
+tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1)
 
-# 学习率记录回调函数
+# # 学习率记录
 # logdir_lr = "logs/" + current_time + "/lr"
 # summary_writer = summary.create_file_writer(logdir_lr)
+# # 学习率更改回调函数
 # def lr_sche(epoch):
 #     # 每隔100个epoch，学习率减小为原来的1/10
-#     # if epoch % 100 == 0 and epoch != 0:
-#     #     lr = K.get_value(model.optimizer.lr)
-#     #     K.set_value(model.optimizer.lr, lr * 0.1)
-#     #     print("lr changed to {}".format(lr * 0.1))
-#     lr = K.get_value(autoencoder.optimizer.lr)
+#     if epoch % 100 == 0 and epoch != 0:
+#         lr = K.get_value(autoencoder.optimizer.lr)
+#         K.set_value(autoencoder.optimizer.lr, lr * 0.1)
+#         print("lr changed to {}".format(lr * 0.1))
+# 
 #     print("learning rate:",lr)
 #     with summary_writer.as_default():
 #         summary.scalar('leaning_rate', lr, step=epoch)
 #     return lr
 # lr_callback = LearningRateScheduler(lr_sche)
+# loss停滞时学习率降低回调函数
+lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.5,
+                              patience=20, verbose=1, min_delta=0.00001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=16, epochs=3, validation_split=0.2,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=16, epochs=100, validation_split=0.1,callbacks=[tensorboard_callback,lr_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
@@ -169,7 +174,7 @@ print('The mean NMSE for test set is ' + str(NMSE_test),"score:",score_str)
 # NMSE_train=NMSE(x_train, y_train)
 # print('The mean NMSE for train set is ' + str(NMSE_train),"score:",Score(NMSE_train))
 
-# 保存模型
+# 保存模型权重、结构图及代码
 # save encoder
 modelpath = f'./Modelsave/{current_time}S{score_str}/'
 encoder.save(modelpath+"encoder.h5")
@@ -180,9 +185,9 @@ except:
 # save decoder
 decoder.save(modelpath+"decoder.h5")
 try:
-    plot_model(encoder,to_file=modelpath+"decoder.png",show_shapes=True)
+    plot_model(decoder,to_file=modelpath+"decoder.png",show_shapes=True)
 except:
-    plot_model(encoder,to_file=modelpath+"decoder.png",show_shapes=False)
+    plot_model(decoder,to_file=modelpath+"decoder.png",show_shapes=False)
 # save code
 shutil.copyfile('./Model_define_tf.py', modelpath+'Model_define_tf.py')
 
