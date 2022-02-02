@@ -80,8 +80,8 @@ data_load_address = 'train'
 mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
-x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
-x_train=np.concatenate((x_train,x_train_noise))
+# x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
+# x_train=np.concatenate((x_train,x_train_noise))
 # x_train=x_train_noise
 # x_train=linearMapping(x_train)#非线性（分段线性）映射
 np.random.shuffle(x_train)  # 洗牌
@@ -118,14 +118,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220126-213807S37.713/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220121-173329S52.835/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220126-213807S37.713/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220121-173329S52.835/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -133,7 +133,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -163,7 +163,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=120, epochs=65, validation_split=0.2,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=128, epochs=15, validation_split=0.2,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)

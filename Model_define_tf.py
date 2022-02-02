@@ -79,20 +79,14 @@ class DeuantizationLayer(tf.keras.layers.Layer):
         return base_config
 
 
-# CsiNet+(2019)
-def Encoder(x, feedback_bits):
+# More details about the neural networks can be found in [1].
+# [1] C. Wen, W. Shih and S. Jin, "Deep Learning for Massive MIMO CSI Feedback,"
+# in IEEE Wireless Communications Letters, vol. 7, no. 5, pp. 748-751, Oct. 2018, doi: 10.1109/LWC.2018.2818160.
+def Encoder(x, feedback_bits, width_coefficient=1.0, depth_coefficient=1.0, dropout_rate=0.2, drop_connect_rate=0.2):
     B = 4
     with tf.compat.v1.variable_scope('Encoder'):
-        x = layers.Conv2D(2, 7, padding='same')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-
-        x = layers.Conv2D(2, 7, padding='same')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-
+        x = layers.Conv2D(6, 3, padding='same', activation='relu')(x)
+        x = layers.Conv2D(6, 3, padding='same', activation='relu')(x)
         x = layers.Flatten()(x)
         x = layers.Dense(units=int(feedback_bits // B), activation='sigmoid')(x)
         encoder_output = QuantizationLayer(B)(x)
@@ -104,32 +98,13 @@ def Decoder(x,feedback_bits):
     decoder_input = DeuantizationLayer(B)(x)
     x = tf.reshape(decoder_input, (-1, int(feedback_bits//B)))
     x = layers.Dense(32256, activation='sigmoid')(x)
-    x = layers.Reshape((126, 128, 2))(x)
-
-    x = layers.Conv2D(2, 7, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x_ini = layers.Activation('sigmoid')(x)
-
-    for i in range(5):
-        x = layers.Conv2D(8, 7, padding='SAME')(x_ini)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-
-        x = layers.Conv2D(16, 5, padding='SAME')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-
-        x = layers.Conv2D(2, 3, padding='SAME')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation('tanh')(x)
-
-        # x = layers.Dense(2, activation='linear')(x)
-
-        x_ini = layers.Add()([x_ini, x])
-        x_ini = layers.Activation('relu')(x_ini)
-    decoder_output = x_ini
+    x_ini = layers.Reshape((126, 128, 2))(x)
+    for i in range(3):
+        x = layers.Conv2D(8, 3, padding='SAME', activation='relu')(x_ini)
+        x = layers.Conv2D(16, 3, padding='SAME', activation='relu')(x)
+        x = layers.Conv2D(2, 3, padding='SAME', activation='relu')(x)
+        x_ini = keras.layers.Add()([x_ini, x])
+    decoder_output = layers.Conv2D(2, 3, padding='SAME',activation="sigmoid")(x_ini)
     return decoder_output
 
 
