@@ -56,14 +56,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220205-170054S48.116/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220206-015425S51.301/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220206-000435S45.478/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220206-015425S51.301/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -124,8 +124,8 @@ data_load_address = 'train'
 mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
-# x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
-# x_train=np.concatenate((x_train,x_train_noise))
+x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
+x_train=np.concatenate((x_train,x_train_noise))
 # x_train=x_train_noise
 # x_train=linearMapping(x_train)#非线性（分段线性）映射
 np.random.shuffle(x_train)  # 洗牌
@@ -163,7 +163,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=128, epochs=65, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=100, epochs=30, validation_split=0.2,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)

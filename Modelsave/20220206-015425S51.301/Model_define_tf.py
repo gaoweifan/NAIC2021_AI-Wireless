@@ -93,10 +93,6 @@ def Encoder(x, feedback_bits, trainable=True):
         x = layers.LeakyReLU(alpha=0.1)(x)
         # x = layers.Activation('relu')(x)
 
-        # # attention 
-        # attention_vec = layers.Dense(2,activation="softmax",name = "attention_vec")(x)
-        # x = layers.Multiply()([x,attention_vec])
-
         x = layers.Flatten()(x)
         x = layers.Dense(units=int(feedback_bits // B), activation='sigmoid', trainable=trainable)(x)
         encoder_output = QuantizationLayer(B)(x)
