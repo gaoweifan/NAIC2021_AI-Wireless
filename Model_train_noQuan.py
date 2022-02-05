@@ -74,24 +74,6 @@ def gaussian_noise(img,mean,sigma):
 #     return np.select([x>=right_border, x>=left_border, x<left_border],
 #                      [y_right(x),      y_mid(x),       y_left(x)])
 
-# 载入训练集
-print("loading data set...")
-data_load_address = 'train'
-mat = scio.loadmat(data_load_address+'/Htrain.mat')
-x_train = mat['H_train']
-x_train = x_train.astype('float32')
-x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
-x_train=np.concatenate((x_train,x_train_noise))
-# x_train=x_train_noise
-# x_train=linearMapping(x_train)#非线性（分段线性）映射
-np.random.shuffle(x_train)  # 洗牌
-print("x_train",x_train.shape)
-
-# 载入测试集
-mat = scio.loadmat(data_load_address+'/Htest.mat')
-x_test = mat['H_test']
-x_test = x_test.astype('float32')
-print("x_test",x_test.shape)
 
 # 评价指标
 def NMSE_t(x, x_hat):
@@ -122,10 +104,10 @@ encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
 print(encoder.summary())
 
 # decoder model
-Decoder_input = Input(shape=(feedback_bits//4,), name='decoder_input')
+Decoder_input = Input(shape=(feedback_bits // 4,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220127-003006S48.844/decoder.h5')  # 预加载解码器权重
+# decoder.load_weights('Modelsave/20220127-003006S48.844/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -133,9 +115,31 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.01)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.1)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
+
+
+# 载入训练集
+print("loading data set...")
+data_load_address = 'train'
+mat = scio.loadmat(data_load_address+'/Htrain.mat')
+x_train = mat['H_train']
+x_train = x_train.astype('float32')
+# x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
+# x_train=np.concatenate((x_train,x_train_noise))
+# x_train=x_train_noise
+# x_train=linearMapping(x_train)#非线性（分段线性）映射
+np.random.shuffle(x_train)  # 洗牌
+print("x_train",x_train.shape)
+
+# 载入测试集
+mat = scio.loadmat(data_load_address+'/Htest.mat')
+x_test = mat['H_test']
+x_test = x_test.astype('float32')
+print("x_test",x_test.shape)
+
+
 
 # TensorBoard回调函数
 current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -159,11 +163,11 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #     return lr
 # lr_callback = LearningRateScheduler(lr_sche)
 # loss停滞时学习率降低回调函数
-lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.5,
-                              patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
+# lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.5,
+#                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=120, epochs=65, validation_split=0.2,callbacks=[tensorboard_callback,lr_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=32, epochs=65, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)

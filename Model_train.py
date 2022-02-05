@@ -31,6 +31,50 @@ img_height = 126  # shape=N*126*128*2
 img_width = 128
 img_channels = 2
 
+# 评价指标
+def NMSE_t(x, x_hat):
+    x_real = tf.reshape(x[:, :, :, 0], (len(x), -1))
+    x_imag = tf.reshape(x[:, :, :, 1], (len(x), -1))
+    x_hat_real = tf.reshape(x_hat[:, :, :, 0], (len(x_hat), -1))
+    x_hat_imag = tf.reshape(x_hat[:, :, :, 1], (len(x_hat), -1))
+    x_C = tf.complex(x_real - 0.5, x_imag - 0.5)
+    x_hat_C = tf.complex(x_hat_real - 0.5, x_hat_imag - 0.5)
+    power = tf.reduce_sum(tf.abs(x_C) ** 2, axis=1)
+    mse = tf.reduce_sum(tf.abs(x_C - x_hat_C) ** 2, axis=1)
+    nmse = tf.reduce_mean(mse / power)
+    return nmse
+
+def Score(NMSE):
+    score = (1 - NMSE) * 100
+    return score
+
+def score_train(y_true, y_pred):
+    return Score(NMSE_t(y_true, y_pred))
+
+# 建立模型
+# encoder model
+Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
+Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
+encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
+encoder.load_weights('Modelsave/20220205-170054S48.116/encoder.h5')  # 预加载编码器权重
+print(encoder.summary())
+
+# decoder model
+Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
+Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
+decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
+decoder.load_weights('Modelsave/20220206-000435S45.478/decoder.h5')  # 预加载解码器权重
+print(decoder.summary())
+
+# autoencoder model
+autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="original_img")
+encoder_out = encoder(autoencoder_input)
+decoder_out = decoder(encoder_out)
+autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
+adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
+autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
+print(autoencoder.summary())
+
 #添加高斯噪声
 def gaussian_noise(img,mean,sigma):
     '''
@@ -93,50 +137,6 @@ x_test = mat['H_test']
 x_test = x_test.astype('float32')
 print("x_test",x_test.shape)
 
-# 评价指标
-def NMSE_t(x, x_hat):
-    x_real = tf.reshape(x[:, :, :, 0], (len(x), -1))
-    x_imag = tf.reshape(x[:, :, :, 1], (len(x), -1))
-    x_hat_real = tf.reshape(x_hat[:, :, :, 0], (len(x_hat), -1))
-    x_hat_imag = tf.reshape(x_hat[:, :, :, 1], (len(x_hat), -1))
-    x_C = tf.complex(x_real - 0.5, x_imag - 0.5)
-    x_hat_C = tf.complex(x_hat_real - 0.5, x_hat_imag - 0.5)
-    power = tf.reduce_sum(tf.abs(x_C) ** 2, axis=1)
-    mse = tf.reduce_sum(tf.abs(x_C - x_hat_C) ** 2, axis=1)
-    nmse = tf.reduce_mean(mse / power)
-    return nmse
-
-def Score(NMSE):
-    score = (1 - NMSE) * 100
-    return score
-
-def score_train(y_true, y_pred):
-    return Score(NMSE_t(y_true, y_pred))
-
-# 建立模型
-# encoder model
-Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
-Encoder_output = Encoder(Encoder_input, feedback_bits)
-encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220121-173329S52.835/encoder.h5')  # 预加载编码器权重
-print(encoder.summary())
-
-# decoder model
-Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
-Decoder_output = Decoder(Decoder_input, feedback_bits)
-decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220121-173329S52.835/decoder.h5')  # 预加载解码器权重
-print(decoder.summary())
-
-# autoencoder model
-autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="original_img")
-encoder_out = encoder(autoencoder_input)
-decoder_out = decoder(encoder_out)
-autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
-autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
-print(autoencoder.summary())
-
 # TensorBoard回调函数
 current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
 logdir_fit = "logs/" + current_time + "/fit"
@@ -163,7 +163,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=128, epochs=15, validation_split=0.2,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=128, epochs=65, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
