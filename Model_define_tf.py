@@ -94,9 +94,10 @@ def Encoder(x, feedback_bits, trainable=True):
         x = layers.LeakyReLU(alpha=0.1)(x)
         # x = layers.Activation('relu')(x)
 
-        x = tf.reshape(x,(-1,126,8,16,2))
-        x = tf.transpose(x,(0,3,1,2,4))
+        # x = tf.reshape(x,(-1,126,8,16,2))
+        # x = tf.transpose(x,(0,3,1,2,4))
         # x = tf.reshape(x,(-1,16,126*8*2))
+        x = tf.expand_dims(x,1)
         x = layers.ConvLSTM2D(2, kernel_size=(7, 7), activation='sigmoid', padding='same',return_sequences=True)(x)
 
         x = layers.Flatten()(x)
@@ -110,12 +111,13 @@ def Decoder(x,feedback_bits, trainable=True):
     decoder_input = DeuantizationLayer(B)(x)
     x = tf.reshape(decoder_input, (-1, int(feedback_bits//B)))
     x = layers.Dense(32256, activation='sigmoid', trainable=trainable)(x)
-    # x = layers.Reshape((126, 128, 2))(x)
-    x = layers.Reshape((16, 126, 8, 2))(x)
+    x = layers.Reshape((126, 128, 2))(x)
+    # x = layers.Reshape((16, 126, 8, 2))(x)
 
-    x = layers.ConvLSTM2D(2, kernel_size=(7, 7), activation='sigmoid', padding='same',return_sequences=True)(x)
-    x = tf.transpose(x,(0,2,3,1,4))
-    x = tf.reshape(x,(-1,126,128,2))
+    x = tf.expand_dims(x,1)
+    x = layers.ConvLSTM2D(2, kernel_size=(7, 7), activation='sigmoid', padding='same',return_sequences=False)(x)
+    # x = tf.transpose(x,(0,2,3,1,4))
+    # x = tf.reshape(x,(-1,126,128,2))
 
     x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(x)
     x = layers.BatchNormalization(trainable=trainable)(x)
