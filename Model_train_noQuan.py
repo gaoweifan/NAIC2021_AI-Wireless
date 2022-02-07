@@ -115,7 +115,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.1)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.01)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 

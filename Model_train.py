@@ -56,14 +56,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220206-211432S24.416/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220207-143543S-1.440/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220206-211432S24.416/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220207-143543S-1.440/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -71,7 +71,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -163,7 +163,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=100, epochs=30, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=30, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)

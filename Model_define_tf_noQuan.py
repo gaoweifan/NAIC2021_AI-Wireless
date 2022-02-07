@@ -9,20 +9,20 @@ B=4
 # CsiNet+(2019)
 def Encoder(x, feedback_bits):
     with tf.compat.v1.variable_scope('Encoder'):
-        x = layers.Conv2D(128, 7, padding='same')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('sigmoid')(x)
+        # x = layers.Conv2D(128, 7, padding='same')(x)
+        # x = layers.BatchNormalization()(x)
+        # x = layers.LeakyReLU(alpha=0.1)(x)
+        # # x = layers.Activation('sigmoid')(x)
 
-        x = layers.Conv2D(256, 7,padding='same')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-        # x = layers.MaxPooling2D((2, 2), padding='same')(x)
+        # x = layers.Conv2D(256, 7,padding='same')(x)
+        # x = layers.BatchNormalization()(x)
+        # x = layers.LeakyReLU(alpha=0.1)(x)
+        # # x = layers.Activation('relu')(x)
+        # # x = layers.MaxPooling2D((2, 2), padding='same')(x)
 
-        x = layers.Conv2D(1, 7,padding='same')(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
+        # x = layers.Conv2D(1, 7,padding='same')(x)
+        # x = layers.BatchNormalization()(x)
+        # x = layers.LeakyReLU(alpha=0.1)(x)
 
         # x = tf.reshape(x,(-1,126,8,16,2))
         # x = tf.transpose(x,(0,3,1,2,4))
@@ -34,6 +34,7 @@ def Encoder(x, feedback_bits):
         # x = layers.Dense(units=1024, activation='relu')(x)
         # x = layers.Dense(units=512, activation='relu')(x)
         # x = layers.Dense(units=256, activation='relu')(x)
+        x = layers.Dense(units=1024, activation='relu')(x)
         x = layers.Dense(units=int(feedback_bits // B), activation='sigmoid')(x)
         encoder_output = x
     return encoder_output
@@ -58,21 +59,22 @@ def Decoder(x,feedback_bits):
     # x = layers.Dense(units=1024, activation='relu')(x)
     # x = layers.GRU(units=256, return_sequences=True)(x)
     # x = layers.GRU(units=512, return_sequences=False)(x)
-
-    x = layers.Dense(32256, activation='sigmoid')(x)
-    x = tf.reshape(x,(-1,126, 128, 2))
     
-    x = layers.Conv2D(256, 7, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('sigmoid')(x)
+    x = layers.Dense(units=1024, activation='relu')(x)
+    x = layers.Dense(32256, activation='sigmoid')(x)
+    x = layers.Reshape((126, 128, 2))(x)
+    
+    # x = layers.Conv2D(256, 7, padding='same')(x)
+    # x = layers.BatchNormalization()(x)
+    # x = layers.Activation('sigmoid')(x)
 
-    x = layers.Conv2D(128, 7, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('sigmoid')(x)
+    # x = layers.Conv2D(128, 7, padding='same')(x)
+    # x = layers.BatchNormalization()(x)
+    # x = layers.Activation('sigmoid')(x)
 
-    x = layers.Conv2D(2, 7, padding='same')(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation('sigmoid')(x)
+    # x = layers.Conv2D(2, 7, padding='same')(x)
+    # x = layers.BatchNormalization()(x)
+    # x = layers.Activation('sigmoid')(x)
 
     # for i in range(5):
     #     x = layers.Conv2D(8, 7, padding='SAME')(x_ini)
