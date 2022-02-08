@@ -64,14 +64,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220208-223542S54.786/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220209-020144S55.393/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220208-223542S54.786/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220209-020144S55.393/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -114,6 +114,40 @@ mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
 
+#训练集分类
+# half_point=50
+# x_train_abs_l=abs(x_train[:,:half_point,:,0]-0.5+1j*(x_train[:,:half_point,:,1]-0.5))
+# x_train_abs_r=abs(x_train[:,half_point:,:,0]-0.5+1j*(x_train[:,half_point:,:,1]-0.5))
+# x_train_delay_n=np.mean(x_train_abs_r,axis=2)
+# x_train_n=np.mean(x_train_delay_n,axis=1)
+
+# x_train_multi=list()
+# x_train_single=list()
+# for i,x in enumerate(x_train_n):
+#     if(x>0.002):
+#         x_train_multi.append(x_train[i])
+#     else:
+#         x_train_single.append(x_train[i])
+# x_train_multi=np.array(x_train_multi)
+# x_train_single=np.array(x_train_single)
+
+# x_train_multi_mean=np.mean(np.mean(abs(x_train_multi[:,:,:,0]-0.5+1j*(x_train_multi[:,:,:,1]-0.5)),axis=1),axis=1)
+# x_train_multi_clean=list()
+# x_train_multi_dirty=list()
+# for i,x in enumerate(x_train_multi_mean):
+#     if(x<0.0084):
+#         x_train_multi_clean.append(x_train_multi[i])
+#     else:
+#         x_train_multi_dirty.append(x_train_multi[i])
+# x_train_multi_clean=np.array(x_train_multi_clean)
+# x_train_multi_dirty=np.array(x_train_multi_dirty)
+
+# x_train=x_train_single       # 多径效应不明显的训练集
+# x_train=x_train_multi_clean  # 多径效应明显清晰的训练集
+# x_train=x_train_multi_dirty  # 比较模糊的训练集
+
+# 数据增强
+
 # x_train_flip=tf.image.flip_up_down(x_train).numpy() #翻转
 # x_train=np.concatenate((x_train,x_train_flip))
 # x_train=x_train_flip
@@ -127,7 +161,8 @@ x_train = x_train.astype('float32')
 # x_train=np.concatenate((x_train,x_train_noise))
 # x_train=x_train_noise
 
-np.random.shuffle(x_train)  # 洗牌
+# 混洗
+np.random.shuffle(x_train)
 
 print("x_train",x_train.shape)
 
@@ -147,7 +182,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=120, epochs=1, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=5, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
