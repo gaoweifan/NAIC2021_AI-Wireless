@@ -9,21 +9,29 @@ from keras.callbacks import LearningRateScheduler,ReduceLROnPlateau
 from Model_define_tf import Encoder, Decoder, NMSE
 from datetime import datetime
 import shutil
-# tf.compat.v1.disable_eager_execution()
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# if gpus:
-#     tf.config.experimental.set_virtual_device_configuration(gpus[0],[tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024*9)])
-# tf.config.experimental.set_memory_growth(gpus[0],True)
-# 固定随机数种子
-# import random
-# print('GPU', tf.test.is_gpu_available())
-# SEED=123456
-# import os
-# os.environ['TF_DETERMINISTIC_OPS'] = '1'
-# os.environ['PYTHONHASHSEED']=str(SEED)
-# random.seed(SEED)
-# np.random.seed(SEED)
-# tf.random.set_seed(SEED)
+def reset_keras():
+    sess = K.get_session()
+    K.clear_session()
+    sess.close()
+    # limit gpu resource allocation
+    config = tf.compat.v1.ConfigProto()
+    # config.gpu_options.visible_device_list = '1'
+    config.gpu_options.per_process_gpu_memory_fraction = 1.0
+    # physical_devices = tf.config.list_physical_devices('GPU')
+    # try:
+    #     tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    # except:
+    #     # Invalid device or cannot modify virtual devices once initialized.
+    #     print("Cannot access 'set_memory_growth' - skipping.")
+    #     pass 
+
+    # disable arithmetic optimizer
+    from tensorflow.core.protobuf import rewriter_config_pb2
+    tf.config.optimizer.set_experimental_options({
+        'layout_optimizer': rewriter_config_pb2.RewriterConfig.OFF
+    })
+
+reset_keras()
 
 # parameters
 feedback_bits = 512
@@ -56,14 +64,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220207-143543S-1.440/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220208-223542S54.786/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220207-143543S-1.440/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220208-223542S54.786/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -71,7 +79,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -99,36 +107,28 @@ def gaussian_noise(img,mean,sigma):
     # noise = np.uint8(noise*255)
     return gaussian_out# 这里也会返回噪声，注意返回值
 
-#分段线性映射
-# left_border=0.49
-# right_border=0.51
-# mid_k=45
-# def y_mid(x):
-#     return mid_k*(x-0.5)+0.5
-
-# lr_k=y_mid(left_border)/left_border
-# def y_left(x):
-#     return lr_k*x
-
-# right_b=y_mid(right_border)-lr_k*right_border
-# def y_right(x):
-#     return lr_k*x+right_b
-
-# def linearMapping(x):
-#     return np.select([x>=right_border, x>=left_border, x<left_border],
-#                      [y_right(x),      y_mid(x),       y_left(x)])
-
 # 载入训练集
 print("loading data set...")
 data_load_address = 'train'
 mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
+
+# x_train_flip=tf.image.flip_up_down(x_train).numpy() #翻转
+# x_train=np.concatenate((x_train,x_train_flip))
+# x_train=x_train_flip
+
+# half_point=x_train.shape[1]//2 #从中间镜像
+# x_train_mir=np.concatenate((x_train[:,:half_point,:,:],x_train_flip[:,half_point:,:,:]), axis=1)
+# x_train=np.concatenate((x_train,x_train_mir))
+# x_train=x_train_mir
+
 # x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
 # x_train=np.concatenate((x_train,x_train_noise))
 # x_train=x_train_noise
-# x_train=linearMapping(x_train)#非线性（分段线性）映射
+
 np.random.shuffle(x_train)  # 洗牌
+
 print("x_train",x_train.shape)
 
 # 载入测试集
@@ -142,28 +142,12 @@ current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
 logdir_fit = "logs/" + current_time + "/fit"
 tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1)
 
-# # 学习率记录
-# logdir_lr = "logs/" + current_time + "/lr"
-# summary_writer = summary.create_file_writer(logdir_lr)
-# # 学习率更改回调函数
-# def lr_sche(epoch):
-#     # 每隔100个epoch，学习率减小为原来的1/10
-#     if epoch % 100 == 0 and epoch != 0:
-#         lr = K.get_value(autoencoder.optimizer.lr)
-#         K.set_value(autoencoder.optimizer.lr, lr * 0.1)
-#         print("lr changed to {}".format(lr * 0.1))
-# 
-#     print("learning rate:",lr)
-#     with summary_writer.as_default():
-#         summary.scalar('leaning_rate', lr, step=epoch)
-#     return lr
-# lr_callback = LearningRateScheduler(lr_sche)
 # loss停滞时学习率降低回调函数
 # lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.5,
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=30, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=120, epochs=1, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)

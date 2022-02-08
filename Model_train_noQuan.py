@@ -100,14 +100,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-# encoder.load_weights('Modelsave/20220127-003006S48.844/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220207-225636S95.687/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
-Decoder_input = Input(shape=(feedback_bits // 4,), name='decoder_input')
+Decoder_input = Input(shape=(128,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-# decoder.load_weights('Modelsave/20220127-003006S48.844/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220207-225636S95.687/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -167,7 +167,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=32, epochs=65, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=32, epochs=20, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
