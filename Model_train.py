@@ -1,3 +1,7 @@
+# import os
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # 用CPU训练
+
 import numpy as np
 import scipy.io as scio
 import tensorflow as tf
@@ -64,14 +68,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220209-164435S57.709/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220210-010215S60.849/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220209-164435S57.709/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220210-010215S60.849/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -115,36 +119,46 @@ x_train = mat['H_train']
 x_train = x_train.astype('float32')
 
 #训练集分类
-# half_point=50
-# x_train_abs_l=abs(x_train[:,:half_point,:,0]-0.5+1j*(x_train[:,:half_point,:,1]-0.5))
-# x_train_abs_r=abs(x_train[:,half_point:,:,0]-0.5+1j*(x_train[:,half_point:,:,1]-0.5))
-# x_train_delay_n=np.mean(x_train_abs_r,axis=2)
-# x_train_n=np.mean(x_train_delay_n,axis=1)
+def data_Category(x_train,type=0,half_point=50,multi=0.002,dirty=0.0084):
+    if type==0: # 不分类
+        return x_train
+    
+    # x_train_abs_l=abs(x_train[:,:half_point,:,0]-0.5+1j*(x_train[:,:half_point,:,1]-0.5))
+    x_train_abs_r=abs(x_train[:,half_point:,:,0]-0.5+1j*(x_train[:,half_point:,:,1]-0.5))
+    x_train_delay_n=np.mean(x_train_abs_r,axis=2)
+    x_train_n=np.mean(x_train_delay_n,axis=1)
 
-# x_train_multi=list()
-# x_train_single=list()
-# for i,x in enumerate(x_train_n):
-#     if(x>0.002):
-#         x_train_multi.append(x_train[i])
-#     else:
-#         x_train_single.append(x_train[i])
-# x_train_multi=np.array(x_train_multi)
-# x_train_single=np.array(x_train_single)
+    x_train_multi=list()
+    x_train_single=list()
+    for i,x in enumerate(x_train_n):
+        if(x>multi):
+            x_train_multi.append(x_train[i])
+        else:
+            x_train_single.append(x_train[i])
+    x_train_multi=np.array(x_train_multi)
+    x_train_single=np.array(x_train_single)
 
-# x_train_multi_mean=np.mean(np.mean(abs(x_train_multi[:,:,:,0]-0.5+1j*(x_train_multi[:,:,:,1]-0.5)),axis=1),axis=1)
-# x_train_multi_clean=list()
-# x_train_multi_dirty=list()
-# for i,x in enumerate(x_train_multi_mean):
-#     if(x<0.0084):
-#         x_train_multi_clean.append(x_train_multi[i])
-#     else:
-#         x_train_multi_dirty.append(x_train_multi[i])
-# x_train_multi_clean=np.array(x_train_multi_clean)
-# x_train_multi_dirty=np.array(x_train_multi_dirty)
+    x_train_multi_mean=np.mean(np.mean(abs(x_train_multi[:,:,:,0]-0.5+1j*(x_train_multi[:,:,:,1]-0.5)),axis=1),axis=1)
+    x_train_multi_clean=list()
+    x_train_multi_dirty=list()
+    for i,x in enumerate(x_train_multi_mean):
+        if(x<dirty):
+            x_train_multi_clean.append(x_train_multi[i])
+        else:
+            x_train_multi_dirty.append(x_train_multi[i])
+    x_train_multi_clean=np.array(x_train_multi_clean)
+    x_train_multi_dirty=np.array(x_train_multi_dirty)
 
-# x_train=x_train_single       # 多径效应不明显的训练集
-# x_train=x_train_multi_clean  # 多径效应明显清晰的训练集
-# x_train=x_train_multi_dirty  # 比较模糊的训练集
+    if type==1:
+        return x_train_single       # 多径效应不明显的训练集
+    elif type==2:
+        return x_train_multi_clean  # 多径效应明显清晰的训练集
+    elif type==3:
+        return x_train_multi_dirty  # 比较模糊的训练集
+    else:
+        return x_train              # 不分类
+data_type = 1
+x_train = data_Category(x_train,data_type)
 
 # 数据增强
 
@@ -182,7 +196,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=32, epochs=1, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=100, epochs=2, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
@@ -195,7 +209,7 @@ print('The mean NMSE for test set is ' + str(NMSE_test),"score:",score_str)
 
 # 保存模型权重、结构图及代码
 # save encoder
-modelpath = f'./Modelsave/{current_time}S{score_str}/'
+modelpath = f'./Modelsave/{current_time}S{score_str}T{data_type}/'
 encoder.save(modelpath+"encoder.h5")
 try:
     plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=True)
