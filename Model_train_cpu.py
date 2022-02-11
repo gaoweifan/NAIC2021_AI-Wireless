@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # 用CPU训练
 
 import numpy as np
 import scipy.io as scio
@@ -68,14 +68,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220210-010215S60.849/encoder.h5')  # 预加载编码器权重
+encoder.load_weights('Modelsave/tmp20220210-174658T0/encoder.h5')  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220210-010215S60.849/decoder.h5')  # 预加载解码器权重
+decoder.load_weights('Modelsave/tmp20220210-174658T0/decoder.h5')  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -83,7 +83,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.00001)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.00008)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -119,36 +119,46 @@ x_train = mat['H_train']
 x_train = x_train.astype('float32')
 
 #训练集分类
-# half_point=50
-# x_train_abs_l=abs(x_train[:,:half_point,:,0]-0.5+1j*(x_train[:,:half_point,:,1]-0.5))
-# x_train_abs_r=abs(x_train[:,half_point:,:,0]-0.5+1j*(x_train[:,half_point:,:,1]-0.5))
-# x_train_delay_n=np.mean(x_train_abs_r,axis=2)
-# x_train_n=np.mean(x_train_delay_n,axis=1)
+def data_Category(x_train,type=0,half_point=50,multi=0.002,dirty=0.0084):
+    if type==0: # 不分类
+        return x_train
+    
+    # x_train_abs_l=abs(x_train[:,:half_point,:,0]-0.5+1j*(x_train[:,:half_point,:,1]-0.5))
+    x_train_abs_r=abs(x_train[:,half_point:,:,0]-0.5+1j*(x_train[:,half_point:,:,1]-0.5))
+    x_train_delay_n=np.mean(x_train_abs_r,axis=2)
+    x_train_n=np.mean(x_train_delay_n,axis=1)
 
-# x_train_multi=list()
-# x_train_single=list()
-# for i,x in enumerate(x_train_n):
-#     if(x>0.002):
-#         x_train_multi.append(x_train[i])
-#     else:
-#         x_train_single.append(x_train[i])
-# x_train_multi=np.array(x_train_multi)
-# x_train_single=np.array(x_train_single)
+    x_train_multi=list()
+    x_train_single=list()
+    for i,x in enumerate(x_train_n):
+        if(x>multi):
+            x_train_multi.append(x_train[i])
+        else:
+            x_train_single.append(x_train[i])
+    x_train_multi=np.array(x_train_multi)
+    x_train_single=np.array(x_train_single)
 
-# x_train_multi_mean=np.mean(np.mean(abs(x_train_multi[:,:,:,0]-0.5+1j*(x_train_multi[:,:,:,1]-0.5)),axis=1),axis=1)
-# x_train_multi_clean=list()
-# x_train_multi_dirty=list()
-# for i,x in enumerate(x_train_multi_mean):
-#     if(x<0.0084):
-#         x_train_multi_clean.append(x_train_multi[i])
-#     else:
-#         x_train_multi_dirty.append(x_train_multi[i])
-# x_train_multi_clean=np.array(x_train_multi_clean)
-# x_train_multi_dirty=np.array(x_train_multi_dirty)
+    x_train_multi_mean=np.mean(np.mean(abs(x_train_multi[:,:,:,0]-0.5+1j*(x_train_multi[:,:,:,1]-0.5)),axis=1),axis=1)
+    x_train_multi_clean=list()
+    x_train_multi_dirty=list()
+    for i,x in enumerate(x_train_multi_mean):
+        if(x<dirty):
+            x_train_multi_clean.append(x_train_multi[i])
+        else:
+            x_train_multi_dirty.append(x_train_multi[i])
+    x_train_multi_clean=np.array(x_train_multi_clean)
+    x_train_multi_dirty=np.array(x_train_multi_dirty)
 
-# x_train=x_train_single       # 多径效应不明显的训练集
-# x_train=x_train_multi_clean  # 多径效应明显清晰的训练集
-# x_train=x_train_multi_dirty  # 比较模糊的训练集
+    if type==1:
+        return x_train_single       # 多径效应不明显的训练集
+    elif type==2:
+        return x_train_multi_clean  # 多径效应明显清晰的训练集
+    elif type==3:
+        return x_train_multi_dirty  # 比较模糊的训练集
+    else:
+        return x_train              # 不分类
+data_type = 0
+x_train = data_Category(x_train,data_type)
 
 # 数据增强
 
@@ -174,6 +184,7 @@ print("x_train",x_train.shape)
 mat = scio.loadmat(data_load_address+'/Htest.mat')
 x_test = mat['H_test']
 x_test = x_test.astype('float32')
+x_test = data_Category(x_test,data_type)
 print("x_test",x_test.shape)
 
 # TensorBoard回调函数
@@ -185,28 +196,61 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 # lr_callback = ReduceLROnPlateau(monitor='val_loss', factor=0.5,
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
+# 每轮训练完均测试分数并保存最优权重
+class bestScoreCallback(callbacks.Callback):
+    def __init__(self, x_test, **kwargs):
+        self.x_test = x_test
+        self.y_test = x_test
+        self.best_score = 0
+        super(bestScoreCallback, self).__init__()
+
+    def on_train_begin(self, logs=None):
+        self.y_test = self.model.predict(self.x_test)
+        NMSE_test=NMSE(self.x_test, self.y_test)
+        self.best_score=Score(NMSE_test)
+        print("initial best score:",self.best_score)
+        return
+
+    def on_epoch_end(self, epoch, logs=None):
+        self.y_test = self.model.predict(self.x_test)
+        NMSE_test=NMSE(self.x_test, self.y_test)
+        tmp_score = Score(NMSE_test)
+        if(self.best_score<tmp_score):
+            print("update best score from",self.best_score,"to",tmp_score)
+            self.best_score=tmp_score
+            print("saving Model")
+            modelpath = f'./Modelsave/tmp{current_time}T{data_type}/'
+            encoder.save(modelpath+"encoder.h5")
+            decoder.save(modelpath+"decoder.h5")
+        else:
+            print("best score still remain:",self.best_score,",lager than current:",tmp_score)
+        return
+bsCallback=bestScoreCallback(x_test)
+
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=500, epochs=2, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=500, epochs=5, validation_split=0.125,callbacks=[tensorboard_callback,bsCallback])
 
 # 评价模型
-y_test = autoencoder.predict(x_test)
-NMSE_test=NMSE(x_test, y_test)
-score_str=str(format(Score(NMSE_test), '.3f'))
-print('The mean NMSE for test set is ' + str(NMSE_test),"score:",score_str)
+# y_test = autoencoder.predict(x_test)
+# NMSE_test=NMSE(x_test, y_test)
+# score_str=str(format(Score(NMSE_test), '.3f'))
+# print('The mean NMSE for test set is ' + str(NMSE_test),"score:",score_str)
 # y_train = autoencoder.predict(x_train)
 # NMSE_train=NMSE(x_train, y_train)
 # print('The mean NMSE for train set is ' + str(NMSE_train),"score:",Score(NMSE_train))
+score_str=str(format(bsCallback.best_score, '.3f'))
 
 # 保存模型权重、结构图及代码
+modelpath = f'./Modelsave/{current_time}S{score_str}T{data_type}/'
+os.rename(f'./Modelsave/tmp{current_time}T{data_type}/', modelpath)
 # save encoder
-modelpath = f'./Modelsave/{current_time}S{score_str}/'
-encoder.save(modelpath+"encoder.h5")
+# encoder.save(modelpath+"encoder.h5")
 try:
     plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=True)
 except:
     plot_model(encoder,to_file=modelpath+"encoder.png",show_shapes=False)
 # save decoder
-decoder.save(modelpath+"decoder.h5")
+# decoder.save(modelpath+"decoder.h5")
 try:
     plot_model(decoder,to_file=modelpath+"decoder.png",show_shapes=True)
 except:
@@ -229,11 +273,11 @@ for i in range(n):
     ax.invert_yaxis()
     # display reconstruction
     ax = plt.subplot(2, n, i + 1 + n)
-    decoded_imgsplo = abs(y_test[i, :, :, 0]-0.5 + 1j*(y_test[i, :, :, 1]-0.5))
+    decoded_imgsplo = abs(bsCallback.y_test[i, :, :, 0]-0.5 + 1j*(bsCallback.y_test[i, :, :, 1]-0.5))
     plt.imshow(np.max(np.max(decoded_imgsplo))-decoded_imgsplo.T)
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     ax.invert_yaxis()
-plt.savefig(f'./Modelsave/{current_time}S{score_str}/csiPlot.png')
+plt.savefig(modelpath+'csiPlot.png')
 # plt.show()

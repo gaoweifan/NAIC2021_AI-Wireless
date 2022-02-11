@@ -96,10 +96,10 @@ def Encoder(x, feedback_bits, trainable=True):
 
         x = layers.Conv2D(16, 7, padding='same', trainable=trainable)(x)
         x = layers.BatchNormalization(trainable=trainable)(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
+        y = layers.LeakyReLU(alpha=0.1)(x)
         # x = layers.Activation('relu')(x)
 
-        x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(x)
+        x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(y)
         x = layers.BatchNormalization(trainable=trainable)(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
         # x = layers.Activation('relu')(x)
@@ -113,6 +113,8 @@ def Encoder(x, feedback_bits, trainable=True):
         x = layers.BatchNormalization(trainable=trainable)(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
         # x = layers.Activation('relu')(x)
+
+        x = layers.Add()([x, y])
 
         x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(x)
         x = layers.BatchNormalization(trainable=trainable)(x)
@@ -149,10 +151,10 @@ def Decoder(x,feedback_bits, trainable=True):
 
     x = layers.Conv2D(8, 7, padding='same', trainable=trainable)(x)
     x = layers.BatchNormalization(trainable=trainable)(x)
-    x = layers.LeakyReLU(alpha=0.1)(x)
+    y = layers.LeakyReLU(alpha=0.1)(x)
     # x = layers.Activation('relu')(x)
 
-    x = layers.Conv2D(16, 7, padding='same', trainable=trainable)(x)
+    x = layers.Conv2D(16, 7, padding='same', trainable=trainable)(y)
     x = layers.BatchNormalization(trainable=trainable)(x)
     x = layers.LeakyReLU(alpha=0.1)(x)
     # x = layers.Activation('relu')(x)
@@ -162,6 +164,8 @@ def Decoder(x,feedback_bits, trainable=True):
     x = layers.LeakyReLU(alpha=0.1)(x)
     # x = layers.Activation('relu')(x)
 
+    x = layers.Add()([x, y])
+    
     x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(x)
     x = layers.BatchNormalization(trainable=trainable)(x)
     # x = layers.LeakyReLU(alpha=0.1)(x)
