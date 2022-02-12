@@ -8,8 +8,9 @@ import tensorflow as tf
 from tensorflow.keras import optimizers,callbacks,Input,Model
 from tensorflow.keras.utils import plot_model
 from tensorflow import summary
+import tensorflow_addons as tfa
 import keras.backend as K
-from keras.callbacks import LearningRateScheduler,ReduceLROnPlateau,ModelCheckpoint
+from keras.callbacks import LearningRateScheduler,ReduceLROnPlateau,ModelCheckpoint,EarlyStopping
 from Model_define_tf import Encoder, Decoder, NMSE
 from datetime import datetime
 import shutil
@@ -68,14 +69,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220211-151212S60.663T0/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
+# encoder.load_weights('Modelsave/tmp20220212-174640T0/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
-Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=False)
+Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220211-151212S60.663T0/decoder.h5')  # 预加载解码器权重
+# decoder.load_weights('Modelsave/20220211-215235S60.313T0/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -83,7 +84,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
+adam_opt = tfa.optimizers.AdamW(learning_rate=0.01,weight_decay = 0.0001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -228,8 +229,17 @@ class bestScoreCallback(callbacks.Callback):
         return
 bsCallback=bestScoreCallback(x_test)
 
+# 早停回调函数
+esCBk=EarlyStopping(monitor='val_score_train', patience=20, verbose=1, mode='max', baseline=None, restore_best_weights=False)
+
+my_callbacks = [
+    tensorboard_callback,
+    bsCallback,
+    esCBk,
+]
+
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=60, epochs=20, validation_data=(x_test,x_test),callbacks=[tensorboard_callback,bsCallback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=80, epochs=1000, validation_data=(x_test,x_test),callbacks=my_callbacks)
 
 # 评价模型
 # y_test = autoencoder.predict(x_test)

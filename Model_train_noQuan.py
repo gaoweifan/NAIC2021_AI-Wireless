@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.keras import optimizers,callbacks,Input,Model
 from tensorflow.keras.utils import plot_model
 from tensorflow import summary
+import tensorflow_addons as tfa
 import keras.backend as K
 from keras.callbacks import LearningRateScheduler,ReduceLROnPlateau
 from Model_define_tf_noQuan import Encoder, Decoder, NMSE
@@ -28,6 +29,7 @@ import shutil
 # parameters
 feedback_bits = 512
 img_height = 126  # shape=N*126*128*2
+# img_height = 128  # shape=N*126*128*2
 img_width = 128
 img_channels = 2
 
@@ -100,14 +102,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220207-225636S95.687/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
+# encoder.load_weights('Modelsave/20220211-215235S60.313T0/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(128,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220207-225636S95.687/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220211-215235S60.313T0/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -115,7 +117,7 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = optimizers.Adam(learning_rate=0.01)  # 初始学习率为0.001
+adam_opt = tfa.optimizers.AdamW(learning_rate=0.001,weight_decay = 0.0001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -126,6 +128,8 @@ data_load_address = 'train'
 mat = scio.loadmat(data_load_address+'/Htrain.mat')
 x_train = mat['H_train']
 x_train = x_train.astype('float32')
+# padding_zeros=0.5*np.ones((x_train.shape[0],1,img_width,img_channels),dtype = np.float32)#补0.5至128*128
+# x_train = np.concatenate((padding_zeros,x_train,padding_zeros),axis=1)
 # x_train_noise=gaussian_noise(x_train,0,0.01)#加噪
 # x_train=np.concatenate((x_train,x_train_noise))
 # x_train=x_train_noise
@@ -137,6 +141,8 @@ print("x_train",x_train.shape)
 mat = scio.loadmat(data_load_address+'/Htest.mat')
 x_test = mat['H_test']
 x_test = x_test.astype('float32')
+# padding_zeros=0.5*np.ones((x_test.shape[0],1,img_width,img_channels),dtype = np.float32)#补0.5至128*128
+# x_test = np.concatenate((padding_zeros,x_test,padding_zeros),axis=1)
 print("x_test",x_test.shape)
 
 
@@ -167,7 +173,7 @@ tensorboard_callback = callbacks.TensorBoard(log_dir=logdir_fit,histogram_freq=1
 #                               patience=20, verbose=1, min_delta=0.0001, min_lr=0.00001)
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=32, epochs=20, validation_split=0.1,callbacks=[tensorboard_callback])
+autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=200, validation_split=0.1,callbacks=[tensorboard_callback])
 
 # 评价模型
 y_test = autoencoder.predict(x_test)
