@@ -69,14 +69,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-# encoder.load_weights('Modelsave/tmp20220212-174640T0/encoder.h5',by_name=True, skip_mismatch=True)  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220214-023008S56.543T0/encoder.h5', by_name=True, skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-# decoder.load_weights('Modelsave/20220211-215235S60.313T0/decoder.h5',by_name=True, skip_mismatch=True)  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220214-023008S56.543T0/decoder.h5', by_name=True, skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -84,7 +84,8 @@ autoencoder_input = Input(shape=(img_height, img_width, img_channels), name="ori
 encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
-adam_opt = tfa.optimizers.AdamW(learning_rate=0.01,weight_decay = 0.0001)  # 初始学习率为0.001
+# adam_opt = tfa.optimizers.AdamW(learning_rate=0.005,weight_decay = 0.0001)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -224,13 +225,19 @@ class bestScoreCallback(callbacks.Callback):
             modelpath = f'./Modelsave/tmp{current_time}T{data_type}/'
             encoder.save(modelpath+"encoder.h5")
             decoder.save(modelpath+"decoder.h5")
+            # try:
+            #     os.mkdir(modelpath)
+            # except:
+            #     pass
+            # encoder.save_weights(modelpath+"encoder.h5")
+            # decoder.save_weights(modelpath+"decoder.h5")
         else:
             print("best score still remain:",self.best_score,",larger than current:",tmp_score)
         return
 bsCallback=bestScoreCallback(x_test)
 
 # 早停回调函数
-esCBk=EarlyStopping(monitor='val_score_train', patience=20, verbose=1, mode='max', baseline=None, restore_best_weights=False)
+esCBk=EarlyStopping(monitor='val_score_train', patience=100, verbose=1, mode='max', baseline=None, restore_best_weights=False)
 
 my_callbacks = [
     tensorboard_callback,
@@ -257,7 +264,17 @@ try:
     os.rename(f'./Modelsave/tmp{current_time}T{data_type}/', modelpath)
     print("modelpath:",modelpath)
 except:
-    exit()
+    print("no improvement")
+
+    y_test = autoencoder.predict(x_test)
+    NMSE_test=NMSE(x_test, y_test)
+    score_str=str(format(Score(NMSE_test), '.3f'))
+    print('The mean NMSE for test set is ' + str(NMSE_test),"score:",score_str)
+
+    modelpath = f'./Modelsave/{current_time}S{score_str}T{data_type}/'
+    encoder.save(modelpath+"encoder.h5")
+    decoder.save(modelpath+"decoder.h5")
+    # exit()
 # save encoder
 # encoder.save(modelpath+"encoder.h5")
 try:
