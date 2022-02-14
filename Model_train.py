@@ -69,14 +69,16 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220214-023008S56.543T0/encoder.h5', by_name=True, skip_mismatch=True)  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220215-040123S61.092T0/encoder.h5',by_name=True,skip_mismatch=True)
+# encoder.load_weights('Modelsave/20220214-173759S60.505T0/encoder.h5',by_name=True,skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220214-023008S56.543T0/decoder.h5', by_name=True, skip_mismatch=True)  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220215-045313S61.366T0/decoder.h5',by_name=True,skip_mismatch=True)
+# decoder.load_weights('Modelsave/20220214-173759S60.505T0/decoder.h5',by_name=True,skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -85,7 +87,7 @@ encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
 # adam_opt = tfa.optimizers.AdamW(learning_rate=0.005,weight_decay = 0.0001)  # 初始学习率为0.001
-adam_opt = optimizers.Adam(learning_rate=0.0001)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -223,14 +225,14 @@ class bestScoreCallback(callbacks.Callback):
             self.best_score=tmp_score
             print("saving Model")
             modelpath = f'./Modelsave/tmp{current_time}T{data_type}/'
-            encoder.save(modelpath+"encoder.h5")
-            decoder.save(modelpath+"decoder.h5")
-            # try:
-            #     os.mkdir(modelpath)
-            # except:
-            #     pass
-            # encoder.save_weights(modelpath+"encoder.h5")
-            # decoder.save_weights(modelpath+"decoder.h5")
+            # encoder.save(modelpath+"encoder.h5")
+            # decoder.save(modelpath+"decoder.h5")
+            try:
+                os.mkdir(modelpath)
+            except:
+                pass
+            encoder.save_weights(modelpath+"encoder.h5")
+            decoder.save_weights(modelpath+"decoder.h5")
         else:
             print("best score still remain:",self.best_score,",larger than current:",tmp_score)
         return
@@ -246,7 +248,7 @@ my_callbacks = [
 ]
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=80, epochs=1000, validation_data=(x_test,x_test),callbacks=my_callbacks)
+autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=100, validation_data=(x_test,x_test),callbacks=my_callbacks)
 
 # 评价模型
 # y_test = autoencoder.predict(x_test)
