@@ -162,30 +162,30 @@ def Encoder(x, feedback_bits, trainable=True):
         x=layers.ZeroPadding2D(padding=(1, 0))(x)
         x=x+0.5
 
-        x = layers.Conv2D(32, 7, padding='same', trainable=False,name="enc_conv_1")(x)
-        x = layers.BatchNormalization(trainable=False,name="enc_bn_1")(x)
+        x = layers.Conv2D(32, 7, padding='same', trainable=trainable,name="enc_conv_1")(x)
+        x = layers.BatchNormalization(trainable=trainable,name="enc_bn_1")(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
 
-        x = layers.Conv2D(16, 7, padding='same', trainable=False,name="enc_conv_2")(x)
-        x = layers.BatchNormalization(trainable=False,name="enc_bn_2")(x)
+        x = layers.Conv2D(16, 7, padding='same', trainable=trainable,name="enc_conv_2")(x)
+        x = layers.BatchNormalization(trainable=trainable,name="enc_bn_2")(x)
         y = layers.LeakyReLU(alpha=0.1)(x)
 
-        x = layers.Conv2D(2, 7, padding='same', trainable=False,name="enc_conv_3")(y)
-        x = layers.BatchNormalization(trainable=False,name="enc_bn_3")(x)
+        x = layers.Conv2D(2, 7, padding='same', trainable=trainable,name="enc_conv_3")(y)
+        x = layers.BatchNormalization(trainable=trainable,name="enc_bn_3")(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
         
-        x = layers.Conv2D(32, 7, padding='same', trainable=False,name="enc_conv_4")(x)
-        x = layers.BatchNormalization(trainable=False,name="enc_bn_4")(x)
+        x = layers.Conv2D(32, 7, padding='same', trainable=trainable,name="enc_conv_4")(x)
+        x = layers.BatchNormalization(trainable=trainable,name="enc_bn_4")(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
 
-        x = layers.Conv2D(16, 7, padding='same', trainable=False,name="enc_conv_5")(x)
-        x = layers.BatchNormalization(trainable=False,name="enc_bn_5")(x)
+        x = layers.Conv2D(16, 7, padding='same', trainable=trainable,name="enc_conv_5")(x)
+        x = layers.BatchNormalization(trainable=trainable,name="enc_bn_5")(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
 
         x = layers.Add()([x, y])
 
-        x = layers.Conv2D(2, 7, padding='same', trainable=False,name="enc_conv_6")(x)
-        x = layers.BatchNormalization(trainable=False,name="enc_bn_6")(x)
+        x = layers.Conv2D(2, 7, padding='same', trainable=trainable,name="enc_conv_6")(x)
+        x = layers.BatchNormalization(trainable=trainable,name="enc_bn_6")(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
 
         # Augment data.
@@ -272,30 +272,30 @@ def Decoder(x,feedback_bits, trainable=True):
 
     x = layers.Reshape((126, 128, 2))(x)
 
-    x = layers.Conv2D(32, 7, padding='same', trainable=False,name="dec_conv_9")(x)
-    x = layers.BatchNormalization(trainable=False,name="dec_bn_9")(x)
+    x = layers.Conv2D(32, 7, padding='same', trainable=trainable,name="dec_conv_9")(x)
+    x = layers.BatchNormalization(trainable=trainable,name="dec_bn_9")(x)
     x = layers.LeakyReLU(alpha=0.1)(x)
 
-    x = layers.Conv2D(16, 7, padding='same', trainable=False,name="dec_conv_10")(x)
-    x = layers.BatchNormalization(trainable=False,name="dec_bn_10")(x)
+    x = layers.Conv2D(16, 7, padding='same', trainable=trainable,name="dec_conv_10")(x)
+    x = layers.BatchNormalization(trainable=trainable,name="dec_bn_10")(x)
     y = layers.LeakyReLU(alpha=0.1)(x)
 
-    x = layers.Conv2D(2, 7, padding='same', trainable=False,name="dec_conv_11")(y)
-    x = layers.BatchNormalization(trainable=False,name="dec_bn_11")(x)
+    x = layers.Conv2D(2, 7, padding='same', trainable=trainable,name="dec_conv_11")(y)
+    x = layers.BatchNormalization(trainable=trainable,name="dec_bn_11")(x)
     x = layers.LeakyReLU(alpha=0.1)(x)
     
-    x = layers.Conv2D(32, 7, padding='same', trainable=False,name="dec_conv_7")(x)
-    x = layers.BatchNormalization(trainable=False,name="dec_bn_7")(x)
+    x = layers.Conv2D(32, 7, padding='same', trainable=trainable,name="dec_conv_7")(x)
+    x = layers.BatchNormalization(trainable=trainable,name="dec_bn_7")(x)
     x = layers.LeakyReLU(alpha=0.1)(x)
 
-    x = layers.Conv2D(16, 7, padding='same', trainable=False,name="dec_conv_8")(x)
-    x = layers.BatchNormalization(trainable=False,name="dec_bn_8")(x)
+    x = layers.Conv2D(16, 7, padding='same', trainable=trainable,name="dec_conv_8")(x)
+    x = layers.BatchNormalization(trainable=trainable,name="dec_bn_8")(x)
     x = layers.LeakyReLU(alpha=0.1)(x)
 
     x = layers.Add()([x, y])
 
-    x = layers.Conv2D(2, 7, padding='same', trainable=False,name="dec_conv_6")(x)
-    x = layers.BatchNormalization(trainable=False,name="dec_bn_6")(x)
+    x = layers.Conv2D(2, 7, padding='same', trainable=trainable,name="dec_conv_6")(x)
+    x = layers.BatchNormalization(trainable=trainable,name="dec_bn_6")(x)
     decoder_output = layers.Activation('sigmoid')(x)
 
     return decoder_output
