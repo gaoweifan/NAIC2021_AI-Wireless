@@ -69,14 +69,14 @@ def score_train(y_true, y_pred):
 Encoder_input = Input(shape=(img_height, img_width, img_channels), name="encoder_input")
 Encoder_output = Encoder(Encoder_input, feedback_bits, trainable=True)
 encoder = Model(inputs=Encoder_input, outputs=Encoder_output, name='encoder')
-encoder.load_weights('Modelsave/20220215-045313S61.366T0/encoder.h5',by_name=True,skip_mismatch=True)  # 预加载编码器权重
+encoder.load_weights('Modelsave/20220210-115241S61.199/encoder.h5',by_name=True,skip_mismatch=True)  # 预加载编码器权重
 print(encoder.summary())
 
 # decoder model
 Decoder_input = Input(shape=(feedback_bits,), name='decoder_input')
 Decoder_output = Decoder(Decoder_input, feedback_bits, trainable=True)
 decoder = Model(inputs=Decoder_input, outputs=Decoder_output, name="decoder")
-decoder.load_weights('Modelsave/20220215-045313S61.366T0/decoder.h5',by_name=True,skip_mismatch=True)  # 预加载解码器权重
+decoder.load_weights('Modelsave/20220210-115241S61.199/decoder.h5',by_name=True,skip_mismatch=True)  # 预加载解码器权重
 print(decoder.summary())
 
 # autoencoder model
@@ -85,7 +85,7 @@ encoder_out = encoder(autoencoder_input)
 decoder_out = decoder(encoder_out)
 autoencoder = Model(inputs=autoencoder_input, outputs=decoder_out, name='autoencoder')
 # adam_opt = tfa.optimizers.AdamW(learning_rate=0.005,weight_decay = 0.0001)  # 初始学习率为0.001
-adam_opt = optimizers.Adam(learning_rate=0.00005)  # 初始学习率为0.001
+adam_opt = optimizers.Adam(learning_rate=0.00001)  # 初始学习率为0.001
 autoencoder.compile(optimizer=adam_opt, loss='mse', metrics=["acc", score_train])  # 编译模型
 print(autoencoder.summary())
 
@@ -237,7 +237,7 @@ class bestScoreCallback(callbacks.Callback):
 bsCallback=bestScoreCallback(x_test)
 
 # 早停回调函数
-esCBk=EarlyStopping(monitor='val_score_train', patience=100, verbose=1, mode='max', baseline=None, restore_best_weights=False)
+esCBk=EarlyStopping(monitor='val_score_train', patience=50, verbose=1, mode='max', baseline=None, restore_best_weights=False)
 
 my_callbacks = [
     tensorboard_callback,
@@ -246,7 +246,7 @@ my_callbacks = [
 ]
 
 # 训练模型
-autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=10, validation_data=(x_test,x_test),callbacks=my_callbacks)
+autoencoder.fit(x=x_train, y=x_train, batch_size=64, epochs=100, validation_data=(x_test,x_test),callbacks=my_callbacks)
 
 # 评价模型
 # y_test = autoencoder.predict(x_test)

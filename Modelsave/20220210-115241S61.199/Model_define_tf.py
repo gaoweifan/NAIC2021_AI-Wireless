@@ -80,15 +80,10 @@ class DeuantizationLayer(tf.keras.layers.Layer):
         return base_config
 
 
-# CsiNet+(2019)
+# pure conv
 def Encoder(x, feedback_bits, trainable=True):
     B = 4
     with tf.compat.v1.variable_scope('Encoder'):
-        # x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(x)
-        # x = layers.BatchNormalization(trainable=trainable)(x)
-        # x_in = layers.LeakyReLU(alpha=0.1)(x)
-        # # x = layers.Activation('relu')(x)
-
         x = layers.Conv2D(64, 7, padding='same', trainable=trainable)(x)
         x = layers.BatchNormalization(trainable=trainable)(x)
         x = layers.LeakyReLU(alpha=0.1)(x)
@@ -169,33 +164,6 @@ def Decoder(x,feedback_bits, trainable=True):
     
     decoder_output = x
     return decoder_output
-
-    x = layers.Conv2D(2, 7, padding='same', trainable=trainable)(x)
-    x = layers.BatchNormalization(trainable=trainable)(x)
-    x_ini = layers.Activation('sigmoid')(x)
-
-    for i in range(3):
-        x = layers.Conv2D(8, 7, padding='SAME', trainable=trainable)(x_ini)
-        x = layers.BatchNormalization(trainable=trainable)(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-
-        x = layers.Conv2D(16, 5, padding='SAME', trainable=trainable)(x)
-        x = layers.BatchNormalization(trainable=trainable)(x)
-        x = layers.LeakyReLU(alpha=0.1)(x)
-        # x = layers.Activation('relu')(x)
-
-        x = layers.Conv2D(2, 3, padding='SAME', trainable=trainable)(x)
-        x = layers.BatchNormalization(trainable=trainable)(x)
-        x = layers.Activation('tanh')(x)
-
-        # x = layers.Dense(2, activation='linear', trainable=trainable)(x)
-
-        x_ini = layers.Add()([x_ini, x])
-        x_ini = layers.Activation('relu')(x_ini)
-    decoder_output = x_ini
-    return decoder_output
-
 
 
 def NMSE(x, x_hat):
